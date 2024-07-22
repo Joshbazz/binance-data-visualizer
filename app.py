@@ -1,20 +1,69 @@
-import streamlit as st
 import pandas as pd
-from pygwalker.api.streamlit import StreamlitRenderer
-import sqlite3
-from sqlalchemy import create_engine
+import streamlit as st
 from data_fetcher import DataFetcher
 from database_connection import DatabaseConnection
+from pygwalker.api.streamlit import StreamlitRenderer
+from database_utils import get_stored_data, get_data_slice
 from sesion_state_manager_updated import SessionStateManager
 
+#################################INITIALIZER#########################################
 st.set_page_config(layout="wide")
 sm = SessionStateManager()
-# data_fetcher = DataFetcher()
 
+# Initialize the coins variable
+coins = ('BTCUSDT', 'ETHUSDT', 'SOLUSDT') # Add more coins as needed
+#################################INITIALIZER#########################################
+
+
+#################################INTRO INFORMATION###################################
 st.title("Interactive Crypto Data Viewer")
-st.text("Welcome! This App will allow you to download data from Binance and store it to a SQL Database,")
-st.text("and interact with your data with PygWalker!")
-st.divider()
+st.text("This section allows you to select portions of your SQL Database, and use PygWalker to interactively vizualize your data.")
+#################################INTRO INFORMATION###################################
+
+
+#################################DATABASE CONNECTION#################################
+db_name = st.text_input("Enter the database name: (Coin_prices is the preloaded database)", "Coin_prices")
+db_url = f'sqlite:///{db_name}.db'
+db_connection = DatabaseConnection(db_url)
+data_fetcher = DataFetcher(db_connection)
+
+new_table = db_connection.is_database_empty()
+if st.button("Show Summary Statistics"):
+    summary = data_fetcher.get_summary_statistics()
+    st.write(summary)
+#################################DATABASE CONNECTION#################################
+
+
+#################################DATA VIZ INPUTS#####################################
+selected_coin = st.selectbox("Select a coin to show data", coins)
+col1, col2 = st.columns(2)
+with col1:
+    start_date = st.date_input("Start Date", value=pd.to_datetime('2024-06-01').date())
+with col2:
+    end_date = st.date_input("End Date", value=pd.to_datetime('2024-06-30').date())
+#################################DATA VIZ INPUTS#####################################
+
+
+#################################PYGWALKER SECTION#################################
+# Button to fetch data
+if st.button("Interact With Your Data!"):
+    try:
+        # Ensure that db_name is defined and not empty
+        if 'db_name' in locals() and db_name:
+            df = get_data_slice(f'{db_name}.db', selected_coin, start_date, end_date)
+            pyg_app = StreamlitRenderer(df)
+            pyg_app.explorer()
+            # Display DataFrame in Streamlit
+            st.write("DataFrame:")
+            st.dataframe(df)
+        else:
+            st.error("Please connect to an existing database, or create a new one.")
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+#################################PYGWALKER SECTION#################################
+
+
+#################################LOCATION SECTION##################################
 # Ask the user for their location
 st.subheader("Location Verification")
 st.text("Please be aware, you will not be able to fetch data from the Binance API if you are located in the US.")
@@ -23,45 +72,31 @@ st.text("For now, this app ships with a pre-loaded SQL database for your use.")
 st.text("Please select 'Other' from the dropdown to gain access")
 location = st.selectbox("Where are you located?", ["Select...", "United States", "Other"])
 
-# Initialize the coins variable
-coins = ()
-
-if 'data_downloaded' not in st.session_state:
-    st.session_state.data_downloaded = False
-
-if 'fetched_data' not in st.session_state:
-    st.session_state.fetched_data = False
-
-
 if location == "Select...":
     st.warning("Please select your location to continue.")
 elif location == "United States":
     st.error("Sorry, data fetching is not allowed from the United States.")
 else:
-    # Ask the user for the database name
-    db_name = st.text_input("Enter the database name:", "Coin_prices")
-    db_url = f'sqlite:///{db_name}.db'
-    db_connection = DatabaseConnection(db_url)
-    data_fetcher = DataFetcher(db_connection)
-
-    if st.button("Show Summary Statistics"):
-        summary = data_fetcher.get_summary_statistics()
-        st.write(summary)
-
     # Define the coins and date range
     coins = ('BTCUSDT', 'ETHUSDT', 'SOLUSDT') # Add more coins as needed
 
     # Allow multiple coin selection
     selected_coins = st.multiselect("Select coins for fetching data", coins)
+#################################LOCATION SECTION##################################
 
-    # def fetch_date_range_selector(self):
-    #     # Date inputs with session state values
-    fetch_start_date = st.date_input("Fetch Start Date", value=st.session_state.fetch_start_date)
-    fetch_end_date = st.date_input("Fetch End Date")
 
+#################################FETCH START DATE COLUMNS#################################
+    col4, col5 = st.columns(2)
+    with col4:
+        fetch_start_date = st.date_input("Fetch Start Date", value=st.session_state.fetch_start_date)
+    with col5:
+        fetch_end_date = st.date_input("Fetch End Date", value=st.session_state.fetch_end_date)
+    
     daterange = pd.date_range(fetch_start_date, fetch_end_date, freq='MS')
-    # daterange = pd.date_range('2024-06-01', '2024-06-10', freq='MS')
+#################################FETCH START DATE COLUMNS#################################
 
+
+#################################BINANCE API CALLS########################################
     st.text("Click the button below to get data from Binance for the Coins")
     st.text("and dates selected above.")
     if st.button("Fetch Data"):
@@ -73,65 +108,4 @@ else:
             st.session_state.fetched_data = True
         else:
             st.error("Please select at least one coin.")
-
-st.divider()
-# Streamlit UI components
-st.title("SQLite Database Data Slice to DataFrame")
-st.text("This section allows you to select portions of your SQL Database,")
-st.text("and use PygWalker to interactively vizualize your data.")
-
-def get_stored_data(symbol, engine):
-    query = f"SELECT * FROM {symbol}"
-    df = pd.read_sql(query, engine)
-    return df
-
-if st.session_state.data_downloaded:
-    # Display data for a selected coin
-    st.text("Please select a coin before moving to the interactive charts below")
-    selected_coin = st.selectbox("Select a coin to show data", coins)
-
-    st.text("The button below will show you all available data,")
-    st.text("whether downloaded from binance, or from the pre-loaded database.")
-    if st.button("Show Data"):
-        if st.session_state.fetched_data:
-            df = get_stored_data(selected_coin, data_fetcher.engine)
-            st.write(df)
-        else:
-            st.warning("Please fetch data before trying to show it.")
-
-# Function to connect to the SQLite database and retrieve a slice of data
-def get_data_slice(database, symbol, start_date, end_date):
-    # NOTE: we need to inject query dates here
-    conn = sqlite3.connect(database)
-    query = f"""
-    SELECT * FROM {symbol}
-    WHERE Time >= '{start_date} 00:00:00.000000'
-    AND Time < datetime('{end_date}', '+1 day', 'start of day');
-    """
-
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
-
-# Inputs for date range
-start_date = st.date_input("Start Date")
-end_date = st.date_input("End Date")
-
-# Button to fetch data
-if st.button("Retrieve Data"):
-    try:
-        # Ensure that db_name is defined and not empty
-        if 'db_name' in locals() and db_name:
-            df = get_data_slice(f'{db_name}.db', selected_coin, start_date, end_date)
-            
-            # Display DataFrame in Streamlit
-            st.write("DataFrame:")
-            st.dataframe(df)
-            
-            pyg_app = StreamlitRenderer(df)
-            pyg_app.explorer()
-        else:
-            st.error("Please connect to an existing database, or create a new one.")
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-
+#################################BINANCE API CALLS########################################

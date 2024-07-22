@@ -14,7 +14,7 @@ class DatabaseConnection:
             result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table';"))
             tables = result.fetchall()
             if not tables:
-                self.callout("The database is empty.")
+                st.warning("The Database is Missing or Empty.")
                 return True
             
             # Check if any table has rows
@@ -22,11 +22,7 @@ class DatabaseConnection:
                 result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name};"))
                 count = result.scalar()
                 if count > 0:
-                    self.callout("The database is not empty.")
+                    st.success("Database Loaded")
                     return False
         
         return True
-
-    def callout(self, message):
-        """Display a message in Streamlit."""
-        st.write(message)

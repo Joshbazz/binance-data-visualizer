@@ -20,8 +20,9 @@ class SessionStateManager:
             'db_name': None,
             'fetch_start_date': datetime.today().date(),
             'fetch_end_date': datetime.today().date(),
-            'view_start_date': datetime.today().date(),
-            'view_end_date': datetime.today().date(),
+            # 'view_start_date': datetime.today().date(),
+            # 'view_end_date': datetime.today().date(),
+            'coins': ('BTCUSDT', 'ETHUSDT', 'SOLUSDT')
         }
         for key, value in default_states.items():
             if key not in st.session_state:

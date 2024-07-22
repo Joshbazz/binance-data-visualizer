@@ -7,10 +7,6 @@ from binance.exceptions import BinanceAPIException
 
 class DataFetcher:
 
-    # def __init__(self, db_connection):
-    #     self.client = Client()
-    #     self.engine = db_connection.get_engine()
-
     def __init__(self, db_connection):
         try:
             self.client = Client()
