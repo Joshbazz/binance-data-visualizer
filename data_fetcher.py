@@ -16,7 +16,7 @@ class DataFetcher:
             self.client = Client()
         except BinanceAPIException as e:
             self.client = None
-            raise Exception(f"Error initializing Binance Client, please connect from outside the United States. You will not be able to download data from Binance")
+            # raise Exception(f"Error initializing Binance Client, please connect from outside the United States. You will not be able to download data from Binance")
         self.engine = db_connection.get_engine()
 
     def get_data(self, symbol, start):
