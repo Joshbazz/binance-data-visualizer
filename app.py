@@ -20,6 +20,7 @@ st.subheader("Location Verification")
 st.text("Please be aware, you will not be able to fetch data from the Binance API if you are located in the US.")
 st.text("In future updates, this will be handled with a connection to a domestically appropriate API.")
 st.text("For now, this app ships with a pre-loaded SQL database for your use.")
+st.text("Please select 'Other' from the dropdown to gain access")
 location = st.selectbox("Where are you located?", ["Select...", "United States", "Other"])
 
 # Initialize the coins variable
@@ -73,6 +74,12 @@ else:
         else:
             st.error("Please select at least one coin.")
 
+st.divider()
+# Streamlit UI components
+st.title("SQLite Database Data Slice to DataFrame")
+st.text("This section allows you to select portions of your SQL Database,")
+st.text("and use PygWalker to interactively vizualize your data.")
+
 def get_stored_data(symbol, engine):
     query = f"SELECT * FROM {symbol}"
     df = pd.read_sql(query, engine)
@@ -80,15 +87,17 @@ def get_stored_data(symbol, engine):
 
 if st.session_state.data_downloaded:
     # Display data for a selected coin
+    st.text("Please select a coin before moving to the interactive charts below")
     selected_coin = st.selectbox("Select a coin to show data", coins)
 
+    st.text("The button below will show you all available data,")
+    st.text("whether downloaded from binance, or from the pre-loaded database.")
     if st.button("Show Data"):
         if st.session_state.fetched_data:
             df = get_stored_data(selected_coin, data_fetcher.engine)
             st.write(df)
         else:
             st.warning("Please fetch data before trying to show it.")
-
 
 # Function to connect to the SQLite database and retrieve a slice of data
 def get_data_slice(database, symbol, start_date, end_date):
@@ -103,12 +112,6 @@ def get_data_slice(database, symbol, start_date, end_date):
     df = pd.read_sql_query(query, conn)
     conn.close()
     return df
-
-st.divider()
-# Streamlit UI components
-st.title("SQLite Database Data Slice to DataFrame")
-st.text("This section allows you to select portions of your SQL Database,")
-st.text("and use PygWalker to interactively vizualize your data.")
 
 # Inputs for date range
 start_date = st.date_input("Start Date")
